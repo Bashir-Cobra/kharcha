@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#0f1117">
 <title>Kharcha — Monthly Expense Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 :root {
   --bg: #0f1117;
@@ -28,312 +29,129 @@
   --radius-sm: 10px;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; max-width: 480px; margin: 0 auto; overflow-x: hidden; padding-bottom: calc(80px + var(--safe-bottom)); }
 
-body {
-  font-family: var(--font);
+/* ── PIN LOCK SCREEN ── */
+#pin-screen {
+  position: fixed; inset: 0; z-index: 999;
   background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  max-width: 480px;
-  margin: 0 auto;
-  overflow-x: hidden;
-  padding-bottom: calc(80px + var(--safe-bottom));
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 30px 20px;
 }
+.pin-logo { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+.pin-logo span { color: var(--accent2); }
+.pin-subtitle { font-size: 13px; color: var(--muted); margin-bottom: 40px; }
+.pin-dots { display: flex; gap: 16px; margin-bottom: 36px; }
+.pin-dot {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--border2);
+  background: transparent;
+  transition: all .2s;
+}
+.pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+.pin-dot.error { background: var(--red); border-color: var(--red); }
+.pin-error { font-size: 12px; color: var(--red); margin-bottom: 16px; min-height: 18px; text-align: center; }
+.pin-grid {
+  display: grid; grid-template-columns: repeat(3, 72px);
+  gap: 14px; margin-bottom: 20px;
+}
+.pin-key {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: var(--surface); border: 0.5px solid var(--border2);
+  font-size: 22px; font-weight: 500; color: var(--text);
+  cursor: pointer; transition: all .15s; display: flex;
+  align-items: center; justify-content: center;
+}
+.pin-key:active { background: var(--accent); border-color: var(--accent); transform: scale(.93); }
+.pin-key.del { font-size: 18px; }
+.pin-key.empty { background: transparent; border-color: transparent; cursor: default; }
+.pin-hint { font-size: 11px; color: var(--muted); text-align: center; margin-top: 8px; }
+.pin-hint a { color: var(--accent2); cursor: pointer; text-decoration: none; }
 
-/* ── TOP HEADER ── */
-.app-header {
-  padding: 52px 20px 0;
-  background: linear-gradient(180deg, #13162080 0%, transparent 100%);
-  position: relative;
+/* ── SET PIN SCREEN ── */
+#set-pin-screen {
+  position: fixed; inset: 0; z-index: 998;
+  background: var(--bg);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 30px 20px;
 }
-.app-header::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 120px;
-  background: radial-gradient(ellipse at 70% 0%, rgba(108,99,255,0.18) 0%, transparent 70%);
-  pointer-events: none;
-}
-.header-top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 20px;
-}
-.app-title {
-  font-size: 22px;
-  font-weight: 700;
-  letter-spacing: -0.5px;
-}
+#set-pin-screen.show { display: flex; }
+
+/* ── APP HEADER ── */
+.app-header { padding: 52px 20px 0; background: linear-gradient(180deg, #13162080 0%, transparent 100%); position: relative; }
+.app-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 120px; background: radial-gradient(ellipse at 70% 0%, rgba(108,99,255,0.18) 0%, transparent 70%); pointer-events: none; }
+.header-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.app-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
 .app-title span { color: var(--accent2); }
-.month-switcher {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--surface);
-  border: 0.5px solid var(--border2);
-  border-radius: 100px;
-  padding: 6px 10px;
-}
-.month-btn {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 16px;
-  line-height: 1;
-  padding: 2px 4px;
-  transition: color .2s;
-}
-.month-btn:hover { color: var(--text); }
-.month-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text);
-  min-width: 90px;
-  text-align: center;
-  letter-spacing: 0.02em;
-}
+.month-switcher { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 0.5px solid var(--border2); border-radius: 100px; padding: 6px 10px; }
+.month-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; }
+.month-name { font-size: 12px; font-weight: 600; color: var(--text); min-width: 90px; text-align: center; letter-spacing: 0.02em; }
 
 /* ── HERO CARD ── */
-.hero-card {
-  background: linear-gradient(135deg, #1e1b4b 0%, #1a1d27 60%, #1e1a2e 100%);
-  border: 0.5px solid rgba(108,99,255,0.3);
-  border-radius: var(--radius);
-  padding: 22px 20px 18px;
-  margin: 0 20px 16px;
-  position: relative;
-  overflow: hidden;
-}
-.hero-card::after {
-  content: '';
-  position: absolute;
-  bottom: -20px; right: -20px;
-  width: 120px; height: 120px;
-  background: radial-gradient(circle, rgba(108,99,255,0.2) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero-label {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.hero-amount {
-  font-family: var(--mono);
-  font-size: 36px;
-  font-weight: 500;
-  color: var(--text);
-  letter-spacing: -1px;
-  margin-bottom: 16px;
-}
+.hero-card { background: linear-gradient(135deg, #1e1b4b 0%, #1a1d27 60%, #1e1a2e 100%); border: 0.5px solid rgba(108,99,255,0.3); border-radius: var(--radius); padding: 22px 20px 18px; margin: 0 20px 16px; position: relative; overflow: hidden; }
+.hero-card::after { content: ''; position: absolute; bottom: -20px; right: -20px; width: 120px; height: 120px; background: radial-gradient(circle, rgba(108,99,255,0.2) 0%, transparent 70%); pointer-events: none; }
+.hero-label { font-size: 11px; font-weight: 500; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.hero-amount { font-family: var(--mono); font-size: 36px; font-weight: 500; color: var(--text); letter-spacing: -1px; margin-bottom: 16px; }
 .hero-amount .currency { font-size: 18px; color: var(--muted); margin-right: 4px; }
-.hero-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
-}
+.hero-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
 .hero-stat-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; letter-spacing: 0.04em; }
 .hero-stat-val { font-family: var(--mono); font-size: 14px; font-weight: 500; }
 .hero-stat-val.green { color: var(--green); }
 .hero-stat-val.red { color: var(--red); }
 .hero-stat-val.amber { color: var(--amber); }
-.budget-bar-wrap { }
-.budget-bar-top {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--muted);
-  margin-bottom: 6px;
-}
-.budget-bar-track {
-  height: 4px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 2px;
-  overflow: hidden;
-}
-.budget-bar-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width .5s cubic-bezier(.4,0,.2,1);
-  background: linear-gradient(90deg, var(--accent), var(--accent2));
-}
+.budget-bar-top { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+.budget-bar-track { height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.budget-bar-fill { height: 100%; border-radius: 2px; transition: width .5s cubic-bezier(.4,0,.2,1); background: linear-gradient(90deg, var(--accent), var(--accent2)); }
 .budget-bar-fill.warn { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
 .budget-bar-fill.over { background: linear-gradient(90deg, #ef4444, #ff5e6c); }
 
-/* ── BUDGET INPUT ROW ── */
-.budget-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 20px 16px;
-  background: var(--surface);
-  border: 0.5px solid var(--border2);
-  border-radius: var(--radius-sm);
-  padding: 10px 14px;
-}
+/* ── BUDGET ROW ── */
+.budget-row { display: flex; align-items: center; gap: 8px; margin: 0 20px 16px; background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 10px 14px; }
 .budget-row label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
-.budget-row input {
-  flex: 1;
-  background: none;
-  border: none;
-  font-family: var(--mono);
-  font-size: 14px;
-  color: var(--text);
-  outline: none;
-  text-align: right;
-}
+.budget-row input { flex: 1; background: none; border: none; font-family: var(--mono); font-size: 14px; color: var(--text); outline: none; text-align: right; }
 .budget-row input::placeholder { color: var(--muted); }
 
 /* ── SECTION ── */
 .section { margin: 0 20px 16px; }
-.section-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
+.section-title { font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
 
-/* ── ADD EXPENSE FORM ── */
-.add-form {
-  background: var(--surface);
-  border: 0.5px solid var(--border2);
-  border-radius: var(--radius);
-  padding: 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
+/* ── ADD FORM ── */
+.add-form { background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.field label {
-  display: block;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--muted);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 6px;
-}
-.field input, .field select {
-  width: 100%;
-  background: var(--surface2);
-  border: 0.5px solid var(--border2);
-  border-radius: var(--radius-sm);
-  padding: 11px 12px;
-  font-family: var(--font);
-  font-size: 13px;
-  color: var(--text);
-  outline: none;
-  -webkit-appearance: none;
-  appearance: none;
-  transition: border-color .2s;
-}
+.field label { display: block; font-size: 10px; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
+.field input, .field select { width: 100%; background: var(--surface2); border: 0.5px solid var(--border2); border-radius: var(--radius-sm); padding: 11px 12px; font-family: var(--font); font-size: 13px; color: var(--text); outline: none; -webkit-appearance: none; appearance: none; transition: border-color .2s; }
 .field input:focus, .field select:focus { border-color: var(--accent); }
 .field input::placeholder { color: var(--muted); }
 .field select option { background: #1a1d27; }
-.btn-add {
-  width: 100%;
-  background: linear-gradient(135deg, var(--accent), #7c3aed);
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 13px;
-  font-family: var(--font);
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  cursor: pointer;
-  letter-spacing: 0.02em;
-  transition: opacity .2s, transform .1s;
-}
+.btn-add { width: 100%; background: linear-gradient(135deg, var(--accent), #7c3aed); border: none; border-radius: var(--radius-sm); padding: 13px; font-family: var(--font); font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; transition: opacity .2s, transform .1s; }
 .btn-add:active { opacity: .85; transform: scale(.98); }
 
-/* ── CATEGORY PILLS ── */
-.cat-pills {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  scrollbar-width: none;
-}
+/* ── PILLS ── */
+.cat-pills { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
 .cat-pills::-webkit-scrollbar { display: none; }
-.pill {
-  flex-shrink: 0;
-  padding: 6px 12px;
-  border-radius: 100px;
-  font-size: 11px;
-  font-weight: 500;
-  cursor: pointer;
-  border: 0.5px solid var(--border2);
-  background: var(--surface);
-  color: var(--muted);
-  transition: all .2s;
-  white-space: nowrap;
-}
+.pill { flex-shrink: 0; padding: 6px 12px; border-radius: 100px; font-size: 11px; font-weight: 500; cursor: pointer; border: 0.5px solid var(--border2); background: var(--surface); color: var(--muted); transition: all .2s; white-space: nowrap; }
 .pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 
 /* ── EXPENSE LIST ── */
 .expense-list { display: flex; flex-direction: column; gap: 8px; }
-.exp-item {
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  animation: slideIn .25s ease;
-}
-@keyframes slideIn {
-  from { opacity: 0; transform: translateY(-8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.exp-icon {
-  width: 38px; height: 38px;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px;
-  flex-shrink: 0;
-}
+.exp-item { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; align-items: center; gap: 12px; animation: slideIn .25s ease; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+.exp-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 .exp-info { flex: 1; min-width: 0; }
 .exp-name { font-size: 13px; font-weight: 500; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .exp-meta { font-size: 11px; color: var(--muted); }
 .exp-right { text-align: right; flex-shrink: 0; }
 .exp-amt { font-family: var(--mono); font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-.exp-del {
-  background: none;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: 13px;
-  padding: 0;
-  line-height: 1;
-  display: block;
-  margin-left: auto;
-  transition: color .2s;
-}
+.exp-del { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 0; line-height: 1; display: block; margin-left: auto; transition: color .2s; }
 .exp-del:hover { color: var(--red); }
-.empty-state {
-  text-align: center;
-  padding: 32px 20px;
-  color: var(--muted);
-  font-size: 13px;
-}
+.empty-state { text-align: center; padding: 32px 20px; color: var(--muted); font-size: 13px; }
 .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: .5; }
 
-/* ── BAR CHART ── */
-.chart-wrap {
-  background: var(--surface);
-  border: 0.5px solid var(--border2);
-  border-radius: var(--radius);
-  padding: 16px;
-}
+/* ── CHART ── */
+.chart-wrap { background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 16px; }
 .chart-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .chart-row:last-child { margin-bottom: 0; }
 .chart-icon { font-size: 14px; width: 22px; text-align: center; flex-shrink: 0; }
@@ -343,35 +161,8 @@ body {
 .chart-val { font-family: var(--mono); font-size: 10px; color: var(--muted); min-width: 50px; text-align: right; flex-shrink: 0; }
 
 /* ── BOTTOM NAV ── */
-.bottom-nav {
-  position: fixed;
-  bottom: 0; left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
-  background: rgba(15,17,23,0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 0.5px solid var(--border2);
-  display: flex;
-  padding: 10px 20px calc(10px + var(--safe-bottom));
-  gap: 4px;
-  z-index: 100;
-}
-.nav-btn {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 4px;
-  border: none;
-  background: none;
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  transition: background .2s;
-  color: var(--muted);
-}
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: rgba(15,17,23,0.92); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--border2); display: flex; padding: 10px 20px calc(10px + var(--safe-bottom)); gap: 4px; z-index: 100; }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: none; background: none; cursor: pointer; border-radius: var(--radius-sm); transition: background .2s; color: var(--muted); }
 .nav-btn.active { color: var(--accent2); }
 .nav-btn:active { background: var(--surface); }
 .nav-icon { font-size: 20px; line-height: 1; }
@@ -381,34 +172,95 @@ body {
 .page { display: none; }
 .page.active { display: block; }
 
-/* ── SUMMARY PAGE ── */
-.summary-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-.summary-card {
-  background: var(--surface);
-  border: 0.5px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 14px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+/* ── SUMMARY ── */
+.summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.summary-card { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 14px; display: flex; align-items: center; gap: 10px; }
 .sum-icon { font-size: 20px; }
 .sum-info { min-width: 0; }
 .sum-cat { font-size: 10px; color: var(--muted); margin-bottom: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sum-amt { font-family: var(--mono); font-size: 14px; font-weight: 500; }
 .sum-pct { font-size: 10px; color: var(--muted); margin-top: 1px; }
 
-/* scrollbar */
+/* ── SETTINGS PAGE ── */
+.settings-group { background: var(--surface); border: 0.5px solid var(--border2); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+.settings-item { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 0.5px solid var(--border); cursor: pointer; transition: background .2s; }
+.settings-item:last-child { border-bottom: none; }
+.settings-item:active { background: var(--surface2); }
+.settings-icon { font-size: 20px; width: 36px; height: 36px; background: var(--surface2); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.settings-info { flex: 1; }
+.settings-title { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+.settings-desc { font-size: 11px; color: var(--muted); }
+.settings-arrow { color: var(--muted); font-size: 16px; }
+.btn-danger { width: 100%; background: rgba(255,94,108,0.1); border: 0.5px solid rgba(255,94,108,0.3); border-radius: var(--radius-sm); padding: 13px; font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--red); cursor: pointer; transition: all .2s; }
+.btn-danger:active { background: rgba(255,94,108,0.2); }
+
+/* ── PDF BUTTON ── */
+.btn-pdf { width: 100%; background: rgba(74,222,128,0.1); border: 0.5px solid rgba(74,222,128,0.3); border-radius: var(--radius-sm); padding: 13px; font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--green); cursor: pointer; transition: all .2s; margin-bottom: 10px; }
+.btn-pdf:active { background: rgba(74,222,128,0.2); }
+
 ::-webkit-scrollbar { width: 0; }
 </style>
 </head>
 <body>
 
-<!-- ── HEADER (always visible) ── -->
+<!-- ── PIN LOCK SCREEN ── -->
+<div id="pin-screen">
+  <div class="pin-logo">Kharcha<span>.</span></div>
+  <div class="pin-subtitle" id="pin-subtitle">Enter your PIN</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+  <div class="pin-grid">
+    <button class="pin-key" onclick="pinPress('1')">1</button>
+    <button class="pin-key" onclick="pinPress('2')">2</button>
+    <button class="pin-key" onclick="pinPress('3')">3</button>
+    <button class="pin-key" onclick="pinPress('4')">4</button>
+    <button class="pin-key" onclick="pinPress('5')">5</button>
+    <button class="pin-key" onclick="pinPress('6')">6</button>
+    <button class="pin-key" onclick="pinPress('7')">7</button>
+    <button class="pin-key" onclick="pinPress('8')">8</button>
+    <button class="pin-key" onclick="pinPress('9')">9</button>
+    <button class="pin-key empty"></button>
+    <button class="pin-key" onclick="pinPress('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+  <div class="pin-hint" id="pin-hint"></div>
+</div>
+
+<!-- ── SET PIN SCREEN ── -->
+<div id="set-pin-screen">
+  <div class="pin-logo">Kharcha<span>.</span></div>
+  <div class="pin-subtitle" id="setpin-subtitle">Create a 4-digit PIN</div>
+  <div class="pin-dots" id="setpin-dots">
+    <div class="pin-dot" id="sd0"></div>
+    <div class="pin-dot" id="sd1"></div>
+    <div class="pin-dot" id="sd2"></div>
+    <div class="pin-dot" id="sd3"></div>
+  </div>
+  <div class="pin-error" id="setpin-error"></div>
+  <div class="pin-grid">
+    <button class="pin-key" onclick="setPinPress('1')">1</button>
+    <button class="pin-key" onclick="setPinPress('2')">2</button>
+    <button class="pin-key" onclick="setPinPress('3')">3</button>
+    <button class="pin-key" onclick="setPinPress('4')">4</button>
+    <button class="pin-key" onclick="setPinPress('5')">5</button>
+    <button class="pin-key" onclick="setPinPress('6')">6</button>
+    <button class="pin-key" onclick="setPinPress('7')">7</button>
+    <button class="pin-key" onclick="setPinPress('8')">8</button>
+    <button class="pin-key" onclick="setPinPress('9')">9</button>
+    <button class="pin-key empty"></button>
+    <button class="pin-key" onclick="setPinPress('0')">0</button>
+    <button class="pin-key del" onclick="setPinDel()">⌫</button>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="main-app" style="display:none">
+
 <div class="app-header">
   <div class="header-top">
     <div class="app-title">Kharcha<span>.</span></div>
@@ -420,74 +272,44 @@ body {
   </div>
 </div>
 
-<!-- ── PAGE: DASHBOARD ── -->
+<!-- PAGE: DASHBOARD -->
 <div id="page-dashboard" class="page active">
-
   <div class="hero-card" style="margin-top:16px">
     <div class="hero-label">Total Spent</div>
     <div class="hero-amount"><span class="currency">Rs</span><span id="h-total">0</span></div>
     <div class="hero-row">
-      <div>
-        <div class="hero-stat-label">Budget</div>
-        <div class="hero-stat-val amber" id="h-budget">—</div>
-      </div>
-      <div>
-        <div class="hero-stat-label">Remaining</div>
-        <div class="hero-stat-val green" id="h-remaining">—</div>
-      </div>
-      <div>
-        <div class="hero-stat-label">Daily Avg</div>
-        <div class="hero-stat-val" id="h-avg" style="color:var(--accent2)">—</div>
-      </div>
+      <div><div class="hero-stat-label">Budget</div><div class="hero-stat-val amber" id="h-budget">—</div></div>
+      <div><div class="hero-stat-label">Remaining</div><div class="hero-stat-val green" id="h-remaining">—</div></div>
+      <div><div class="hero-stat-label">Daily Avg</div><div class="hero-stat-val" id="h-avg" style="color:var(--accent2)">—</div></div>
     </div>
-    <div class="budget-bar-wrap">
-      <div class="budget-bar-top">
-        <span>Budget used</span>
-        <span id="h-pct">0%</span>
-      </div>
-      <div class="budget-bar-track">
-        <div class="budget-bar-fill" id="h-bar" style="width:0%"></div>
-      </div>
+    <div>
+      <div class="budget-bar-top"><span>Budget used</span><span id="h-pct">0%</span></div>
+      <div class="budget-bar-track"><div class="budget-bar-fill" id="h-bar" style="width:0%"></div></div>
     </div>
   </div>
-
   <div class="budget-row">
     <label>Monthly Budget</label>
     <input type="number" id="budget-inp" placeholder="Enter amount..." oninput="saveBudget()" inputmode="numeric">
     <span style="font-size:12px;color:var(--muted);flex-shrink:0">Rs</span>
   </div>
-
   <div class="section">
     <div class="section-title">Spending by category</div>
-    <div class="chart-wrap" id="chart-wrap">
-      <div class="empty-state"><div class="empty-icon">📊</div>No data yet</div>
-    </div>
+    <div class="chart-wrap" id="chart-wrap"><div class="empty-state"><div class="empty-icon">📊</div>No data yet</div></div>
   </div>
-
 </div>
 
-<!-- ── PAGE: ADD ── -->
+<!-- PAGE: ADD -->
 <div id="page-add" class="page">
-  <div style="padding: 20px 20px 0; margin-bottom: 16px;">
+  <div style="padding:20px 20px 0;margin-bottom:16px;">
     <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Add Expense</div>
     <div style="font-size:13px;color:var(--muted);">Record a new expense entry</div>
   </div>
-
   <div class="section">
     <div class="add-form">
-      <div class="field">
-        <label>Description</label>
-        <input type="text" id="inp-desc" placeholder="e.g. Grocery shopping">
-      </div>
+      <div class="field"><label>Description</label><input type="text" id="inp-desc" placeholder="e.g. Grocery shopping"></div>
       <div class="form-row">
-        <div class="field">
-          <label>Amount (Rs)</label>
-          <input type="number" id="inp-amt" placeholder="0" inputmode="numeric">
-        </div>
-        <div class="field">
-          <label>Date</label>
-          <input type="date" id="inp-date">
-        </div>
+        <div class="field"><label>Amount (Rs)</label><input type="number" id="inp-amt" placeholder="0" inputmode="numeric"></div>
+        <div class="field"><label>Date</label><input type="date" id="inp-date"></div>
       </div>
       <div class="field">
         <label>Category</label>
@@ -507,15 +329,14 @@ body {
   </div>
 </div>
 
-<!-- ── PAGE: EXPENSES ── -->
+<!-- PAGE: EXPENSES -->
 <div id="page-expenses" class="page">
-  <div style="padding: 20px 20px 0; margin-bottom: 12px;">
+  <div style="padding:20px 20px 0;margin-bottom:12px;">
     <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Expenses</div>
     <div style="font-size:13px;color:var(--muted);" id="exp-subtitle">All entries</div>
   </div>
-
   <div class="section">
-    <div class="cat-pills" id="cat-pills">
+    <div class="cat-pills">
       <div class="pill active" onclick="filterCat('All',this)">All</div>
       <div class="pill" onclick="filterCat('House Rent',this)">🏠 Rent</div>
       <div class="pill" onclick="filterCat('Electric Bill',this)">⚡ Electric</div>
@@ -527,48 +348,73 @@ body {
       <div class="pill" onclick="filterCat('Others',this)">📋 Others</div>
     </div>
   </div>
-
   <div class="section">
-    <div class="expense-list" id="expense-list">
-      <div class="empty-state"><div class="empty-icon">🧾</div>No expenses yet</div>
-    </div>
+    <div class="expense-list" id="expense-list"><div class="empty-state"><div class="empty-icon">🧾</div>No expenses yet</div></div>
   </div>
 </div>
 
-<!-- ── PAGE: SUMMARY ── -->
+<!-- PAGE: SUMMARY -->
 <div id="page-summary" class="page">
-  <div style="padding: 20px 20px 0; margin-bottom: 16px;">
+  <div style="padding:20px 20px 0;margin-bottom:16px;">
     <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Summary</div>
     <div style="font-size:13px;color:var(--muted);">Category breakdown</div>
   </div>
   <div class="section">
-    <div class="summary-grid" id="summary-grid">
-      <div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📈</div>No data yet</div>
-    </div>
+    <button class="btn-pdf" onclick="exportPDF()">📄 Export PDF Report</button>
+    <div class="summary-grid" id="summary-grid"><div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📈</div>No data yet</div></div>
   </div>
 </div>
 
-<!-- ── BOTTOM NAV ── -->
-<div class="bottom-nav">
-  <button class="nav-btn active" id="nav-dashboard" onclick="goPage('dashboard')">
-    <span class="nav-icon">🏡</span>
-    <span class="nav-label">Home</span>
-  </button>
-  <button class="nav-btn" id="nav-add" onclick="goPage('add')">
-    <span class="nav-icon">➕</span>
-    <span class="nav-label">Add</span>
-  </button>
-  <button class="nav-btn" id="nav-expenses" onclick="goPage('expenses')">
-    <span class="nav-icon">🧾</span>
-    <span class="nav-label">Expenses</span>
-  </button>
-  <button class="nav-btn" id="nav-summary" onclick="goPage('summary')">
-    <span class="nav-icon">📊</span>
-    <span class="nav-label">Summary</span>
-  </button>
+<!-- PAGE: SETTINGS -->
+<div id="page-settings" class="page">
+  <div style="padding:20px 20px 0;margin-bottom:16px;">
+    <div style="font-size:20px;font-weight:700;margin-bottom:4px;">Settings</div>
+    <div style="font-size:13px;color:var(--muted);">App preferences & security</div>
+  </div>
+  <div class="section">
+    <div class="settings-group">
+      <div class="settings-item" onclick="openChangePIN()">
+        <div class="settings-icon">🔐</div>
+        <div class="settings-info">
+          <div class="settings-title">Change PIN</div>
+          <div class="settings-desc">Update your 4-digit security PIN</div>
+        </div>
+        <span class="settings-arrow">›</span>
+      </div>
+      <div class="settings-item" onclick="exportPDF()">
+        <div class="settings-icon">📄</div>
+        <div class="settings-info">
+          <div class="settings-title">Export PDF</div>
+          <div class="settings-desc">Download this month's report</div>
+        </div>
+        <span class="settings-arrow">›</span>
+      </div>
+      <div class="settings-item" onclick="lockApp()">
+        <div class="settings-icon">🔒</div>
+        <div class="settings-info">
+          <div class="settings-title">Lock App</div>
+          <div class="settings-desc">Go back to PIN screen</div>
+        </div>
+        <span class="settings-arrow">›</span>
+      </div>
+    </div>
+    <button class="btn-danger" onclick="confirmClearData()">🗑️ Clear All Data</button>
+  </div>
 </div>
 
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="nav-btn active" id="nav-dashboard" onclick="goPage('dashboard')"><span class="nav-icon">🏡</span><span class="nav-label">Home</span></button>
+  <button class="nav-btn" id="nav-add" onclick="goPage('add')"><span class="nav-icon">➕</span><span class="nav-label">Add</span></button>
+  <button class="nav-btn" id="nav-expenses" onclick="goPage('expenses')"><span class="nav-icon">🧾</span><span class="nav-label">Expenses</span></button>
+  <button class="nav-btn" id="nav-summary" onclick="goPage('summary')"><span class="nav-icon">📊</span><span class="nav-label">Summary</span></button>
+  <button class="nav-btn" id="nav-settings" onclick="goPage('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
+</div>
+
+</div><!-- end main-app -->
+
 <script>
+// ── CONSTANTS ──
 const CATS = {
   'House Rent':    { icon:'🏠', color:'#6c63ff', bg:'rgba(108,99,255,0.15)' },
   'Electric Bill': { icon:'⚡', color:'#fbbf24', bg:'rgba(251,191,36,0.15)' },
@@ -579,21 +425,157 @@ const CATS = {
   'Gym':           { icon:'💪', color:'#f472b6', bg:'rgba(244,114,182,0.15)' },
   'Others':        { icon:'📋', color:'#94a3b8', bg:'rgba(148,163,184,0.15)' },
 };
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-let cYear = new Date().getFullYear();
-let cMonth = new Date().getMonth();
-let activeCat = 'All';
-let currentPage = 'dashboard';
+let cYear = new Date().getFullYear(), cMonth = new Date().getMonth();
+let activeCat = 'All', currentPage = 'dashboard';
 
+// ── STORAGE ──
 function sk() { return 'kx_'+cYear+'_'+cMonth; }
 function bk() { return 'kb_'+cYear+'_'+cMonth; }
 function getExp() { try { return JSON.parse(localStorage.getItem(sk())||'[]'); } catch { return []; } }
 function saveExp(a) { localStorage.setItem(sk(), JSON.stringify(a)); }
 function getBudget() { return parseFloat(localStorage.getItem(bk()))||0; }
-function saveBudget() {
-  const v = parseFloat(document.getElementById('budget-inp').value)||0;
-  localStorage.setItem(bk(), v);
-  renderDashboard();
+function saveBudget() { const v=parseFloat(document.getElementById('budget-inp').value)||0; localStorage.setItem(bk(),v); renderDashboard(); }
+function getStoredPIN() { return localStorage.getItem('kharcha_pin')||''; }
+function setStoredPIN(p) { localStorage.setItem('kharcha_pin', p); }
+
+// ── PIN LOCK ──
+let pinEntry = '';
+let pinMode = 'unlock'; // 'unlock' | 'set-new' | 'set-confirm'
+let pinTemp = '';
+
+function initApp() {
+  const stored = getStoredPIN();
+  if (!stored) {
+    // No PIN set yet — show set PIN screen
+    document.getElementById('pin-screen').style.display = 'none';
+    showSetPIN('new');
+  } else {
+    // PIN exists — show unlock screen
+    document.getElementById('setpin-subtitle').textContent = 'Enter your PIN';
+    document.getElementById('pin-screen').style.display = 'flex';
+    document.getElementById('pin-hint').innerHTML = 'Forgot PIN? <a onclick="resetPIN()">Reset app</a>';
+  }
+}
+
+function pinPress(n) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += n;
+  updatePinDots('pin-dots', 'd', pinEntry.length);
+  if (pinEntry.length === 4) {
+    setTimeout(() => checkPIN(), 150);
+  }
+}
+function pinDel() {
+  pinEntry = pinEntry.slice(0, -1);
+  updatePinDots('pin-dots', 'd', pinEntry.length);
+  document.getElementById('pin-error').textContent = '';
+}
+function checkPIN() {
+  if (pinEntry === getStoredPIN()) {
+    document.getElementById('pin-screen').style.display = 'none';
+    document.getElementById('main-app').style.display = 'block';
+    renderAll();
+  } else {
+    document.querySelectorAll('#pin-dots .pin-dot').forEach(d => d.classList.add('error'));
+    document.getElementById('pin-error').textContent = 'Wrong PIN. Try again.';
+    setTimeout(() => {
+      pinEntry = '';
+      updatePinDots('pin-dots', 'd', 0);
+      document.querySelectorAll('#pin-dots .pin-dot').forEach(d => d.classList.remove('error'));
+    }, 800);
+  }
+}
+function updatePinDots(containerId, prefix, count) {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById(prefix+i);
+    if (d) d.className = 'pin-dot' + (i < count ? ' filled' : '');
+  }
+}
+
+// ── SET PIN ──
+let setPinEntry = '', setPinStep = 'create'; // 'create' | 'confirm'
+let setPinFirst = '';
+
+function showSetPIN(mode) {
+  setPinStep = 'create';
+  setPinEntry = '';
+  setPinFirst = '';
+  document.getElementById('set-pin-screen').classList.add('show');
+  document.getElementById('setpin-subtitle').textContent = mode === 'change' ? 'Create new PIN' : 'Create a 4-digit PIN';
+  document.getElementById('setpin-error').textContent = '';
+  updatePinDots('setpin-dots', 'sd', 0);
+}
+function openChangePIN() { showSetPIN('change'); }
+
+function setPinPress(n) {
+  if (setPinEntry.length >= 4) return;
+  setPinEntry += n;
+  updatePinDots('setpin-dots', 'sd', setPinEntry.length);
+  if (setPinEntry.length === 4) {
+    setTimeout(() => {
+      if (setPinStep === 'create') {
+        setPinFirst = setPinEntry;
+        setPinEntry = '';
+        setPinStep = 'confirm';
+        document.getElementById('setpin-subtitle').textContent = 'Confirm your PIN';
+        document.getElementById('setpin-error').textContent = '';
+        updatePinDots('setpin-dots', 'sd', 0);
+      } else {
+        if (setPinEntry === setPinFirst) {
+          setStoredPIN(setPinEntry);
+          document.getElementById('set-pin-screen').classList.remove('show');
+          document.getElementById('pin-screen').style.display = 'none';
+          document.getElementById('main-app').style.display = 'block';
+          renderAll();
+          showToast('🔐 PIN set successfully!');
+        } else {
+          document.getElementById('setpin-error').textContent = 'PINs do not match. Try again.';
+          document.querySelectorAll('#setpin-dots .pin-dot').forEach(d => d.classList.add('error'));
+          setTimeout(() => {
+            setPinEntry = '';
+            setPinFirst = '';
+            setPinStep = 'create';
+            updatePinDots('setpin-dots', 'sd', 0);
+            document.querySelectorAll('#setpin-dots .pin-dot').forEach(d => d.classList.remove('error'));
+            document.getElementById('setpin-subtitle').textContent = 'Create a 4-digit PIN';
+          }, 800);
+        }
+      }
+    }, 150);
+  }
+}
+function setPinDel() {
+  setPinEntry = setPinEntry.slice(0, -1);
+  updatePinDots('setpin-dots', 'sd', setPinEntry.length);
+  document.getElementById('setpin-error').textContent = '';
+}
+
+function resetPIN() {
+  if (confirm('This will delete ALL your data and reset the PIN. Are you sure?')) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+function lockApp() {
+  pinEntry = '';
+  updatePinDots('pin-dots', 'd', 0);
+  document.getElementById('pin-error').textContent = '';
+  document.getElementById('main-app').style.display = 'none';
+  document.getElementById('pin-screen').style.display = 'flex';
+}
+
+// ── NAVIGATION ──
+function goPage(p) {
+  currentPage = p;
+  document.querySelectorAll('.page').forEach(el => el.className='page');
+  document.getElementById('page-'+p).className='page active';
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('nav-'+p).classList.add('active');
+  if(p==='dashboard') renderDashboard();
+  if(p==='expenses') renderExpenses();
+  if(p==='summary') renderSummary();
 }
 
 function changeMonth(d) {
@@ -607,121 +589,83 @@ function changeMonth(d) {
 
 function fmt(n) { return Math.round(n).toLocaleString('en-PK'); }
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
-
-function goPage(p) {
-  currentPage = p;
-  document.querySelectorAll('.page').forEach(el => el.className='page');
-  document.getElementById('page-'+p).className='page active';
-  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-  document.getElementById('nav-'+p).classList.add('active');
-  if(p==='dashboard') renderDashboard();
-  if(p==='expenses') renderExpenses();
-  if(p==='summary') renderSummary();
-}
-
+// ── ADD / DELETE ──
 function addExpense() {
   const desc = document.getElementById('inp-desc').value.trim();
   const amt  = parseFloat(document.getElementById('inp-amt').value);
   const cat  = document.getElementById('inp-cat').value;
   const date = document.getElementById('inp-date').value;
-  if(!desc || !amt || amt<=0 || !date) {
-    alert('Please fill in all fields correctly.'); return;
-  }
+  if(!desc || !amt || amt<=0 || !date) { alert('Please fill in all fields correctly.'); return; }
   const exps = getExp();
   exps.unshift({ id: Date.now(), desc, amt, cat, date });
   saveExp(exps);
   document.getElementById('inp-desc').value = '';
   document.getElementById('inp-amt').value = '';
-  showToast('Expense added!');
+  showToast('✅ Expense added!');
   goPage('expenses');
 }
-
 function deleteExp(id) {
   if(!confirm('Delete this expense?')) return;
   saveExp(getExp().filter(e => e.id !== id));
-  renderExpenses();
-  renderDashboard();
+  renderExpenses(); renderDashboard();
 }
-
 function filterCat(cat, el) {
   activeCat = cat;
   document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
   el.classList.add('active');
   renderExpenses();
 }
+function confirmClearData() {
+  if(confirm('Delete ALL expenses for ALL months? This cannot be undone!')) {
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('kx_') || k.startsWith('kb_'));
+    keys.forEach(k => localStorage.removeItem(k));
+    showToast('🗑️ All data cleared');
+    renderAll();
+  }
+}
 
+// ── RENDER ──
 function renderDashboard() {
-  const exps = getExp();
-  const budget = getBudget();
-  const total = exps.reduce((s,e) => s+e.amt, 0);
-  const days = new Date(cYear, cMonth+1, 0).getDate();
+  const exps = getExp(), budget = getBudget();
+  const total = exps.reduce((s,e)=>s+e.amt,0);
+  const days = new Date(cYear,cMonth+1,0).getDate();
   const remaining = budget - total;
-  const pct = budget > 0 ? Math.min(100, Math.round(total/budget*100)) : 0;
-
+  const pct = budget>0 ? Math.min(100, Math.round(total/budget*100)) : 0;
   document.getElementById('month-label').textContent = MONTHS[cMonth]+' '+cYear;
   document.getElementById('h-total').textContent = fmt(total);
-  document.getElementById('h-budget').textContent = budget > 0 ? 'Rs '+fmt(budget) : '—';
-  document.getElementById('h-remaining').textContent = budget > 0 ? 'Rs '+fmt(Math.max(0,remaining)) : '—';
+  document.getElementById('h-budget').textContent = budget>0 ? 'Rs '+fmt(budget) : '—';
+  document.getElementById('h-remaining').textContent = budget>0 ? 'Rs '+fmt(Math.max(0,remaining)) : '—';
   document.getElementById('h-remaining').className = 'hero-stat-val '+(remaining<0?'red':'green');
   document.getElementById('h-avg').textContent = 'Rs '+fmt(total/days);
   document.getElementById('h-pct').textContent = pct+'%';
   const bar = document.getElementById('h-bar');
   bar.style.width = pct+'%';
   bar.className = 'budget-bar-fill'+(pct>90?' over':pct>70?' warn':'');
-
   const bi = document.getElementById('budget-inp');
   if(!bi.value && budget) bi.value = budget;
-
-  // Chart
   const catTotals = {};
-  exps.forEach(e => { catTotals[e.cat] = (catTotals[e.cat]||0) + e.amt; });
-  const sorted = Object.entries(catTotals).sort((a,b) => b[1]-a[1]);
+  exps.forEach(e => { catTotals[e.cat]=(catTotals[e.cat]||0)+e.amt; });
+  const sorted = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
   const maxV = sorted.length ? sorted[0][1] : 1;
   const cw = document.getElementById('chart-wrap');
-  if(!sorted.length) {
-    cw.innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div>No data yet</div>';
-  } else {
-    cw.innerHTML = sorted.map(([cat,amt]) => {
-      const c = CATS[cat]||CATS['Others'];
-      const w = Math.round(amt/maxV*100);
-      return `<div class="chart-row">
-        <span class="chart-icon">${c.icon}</span>
-        <span class="chart-lbl">${cat}</span>
-        <div class="chart-track"><div class="chart-fill" style="width:${w}%;background:${c.color}"></div></div>
-        <span class="chart-val">Rs ${fmt(amt)}</span>
-      </div>`;
-    }).join('');
-  }
+  if(!sorted.length) { cw.innerHTML='<div class="empty-state"><div class="empty-icon">📊</div>No data yet</div>'; return; }
+  cw.innerHTML = sorted.map(([cat,amt]) => {
+    const c = CATS[cat]||CATS['Others'];
+    return `<div class="chart-row"><span class="chart-icon">${c.icon}</span><span class="chart-lbl">${cat}</span><div class="chart-track"><div class="chart-fill" style="width:${Math.round(amt/maxV*100)}%;background:${c.color}"></div></div><span class="chart-val">Rs ${fmt(amt)}</span></div>`;
+  }).join('');
 }
 
 function renderExpenses() {
   const all = getExp();
-  const filtered = activeCat==='All' ? all : all.filter(e => e.cat===activeCat);
+  const filtered = activeCat==='All' ? all : all.filter(e=>e.cat===activeCat);
   const total = filtered.reduce((s,e)=>s+e.amt,0);
-  document.getElementById('exp-subtitle').textContent =
-    (activeCat==='All'?'All entries':activeCat)+' · Rs '+fmt(total);
-
+  document.getElementById('exp-subtitle').textContent = (activeCat==='All'?'All entries':activeCat)+' · Rs '+fmt(total);
   const list = document.getElementById('expense-list');
-  if(!filtered.length) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">🧾</div>No expenses '+(activeCat!=='All'?'in '+activeCat:'yet')+'</div>';
-    return;
-  }
+  if(!filtered.length) { list.innerHTML='<div class="empty-state"><div class="empty-icon">🧾</div>No expenses '+(activeCat!=='All'?'in '+activeCat:'yet')+'</div>'; return; }
   list.innerHTML = filtered.map(e => {
     const c = CATS[e.cat]||CATS['Others'];
-    const d = new Date(e.date+'T00:00:00');
-    const dStr = d.toLocaleDateString('en-PK',{day:'numeric',month:'short'});
-    return `<div class="exp-item">
-      <div class="exp-icon" style="background:${c.bg}">${c.icon}</div>
-      <div class="exp-info">
-        <div class="exp-name">${e.desc}</div>
-        <div class="exp-meta">${e.cat} · ${dStr}</div>
-      </div>
-      <div class="exp-right">
-        <div class="exp-amt">Rs ${fmt(e.amt)}</div>
-        <button class="exp-del" onclick="deleteExp(${e.id})">✕</button>
-      </div>
-    </div>`;
+    const dStr = new Date(e.date+'T00:00:00').toLocaleDateString('en-PK',{day:'numeric',month:'short'});
+    return `<div class="exp-item"><div class="exp-icon" style="background:${c.bg}">${c.icon}</div><div class="exp-info"><div class="exp-name">${e.desc}</div><div class="exp-meta">${e.cat} · ${dStr}</div></div><div class="exp-right"><div class="exp-amt">Rs ${fmt(e.amt)}</div><button class="exp-del" onclick="deleteExp(${e.id})">✕</button></div></div>`;
   }).join('');
 }
 
@@ -730,53 +674,134 @@ function renderSummary() {
   const total = exps.reduce((s,e)=>s+e.amt,0);
   const catTotals = {};
   exps.forEach(e => { catTotals[e.cat]=(catTotals[e.cat]||0)+e.amt; });
-  const sorted = Object.entries(CATS)
-    .map(([name,c]) => ({ name, c, amt: catTotals[name]||0 }))
-    .filter(x => x.amt>0)
-    .sort((a,b) => b.amt-a.amt);
-
+  const sorted = Object.entries(CATS).map(([name,c])=>({name,c,amt:catTotals[name]||0})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
   const sg = document.getElementById('summary-grid');
-  if(!sorted.length) {
-    sg.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📈</div>No data yet</div>';
-    return;
-  }
+  if(!sorted.length) { sg.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📈</div>No data yet</div>'; return; }
   sg.innerHTML = sorted.map(({name,c,amt}) => {
     const pct = total>0?Math.round(amt/total*100):0;
-    return `<div class="summary-card">
-      <div style="font-size:24px">${c.icon}</div>
-      <div class="sum-info">
-        <div class="sum-cat">${name}</div>
-        <div class="sum-amt" style="color:${c.color}">Rs ${fmt(amt)}</div>
-        <div class="sum-pct">${pct}% of total</div>
-      </div>
-    </div>`;
+    return `<div class="summary-card"><div style="font-size:24px">${c.icon}</div><div class="sum-info"><div class="sum-cat">${name}</div><div class="sum-amt" style="color:${c.color}">Rs ${fmt(amt)}</div><div class="sum-pct">${pct}% of total</div></div></div>`;
   }).join('');
 }
 
-function renderAll() {
-  renderDashboard();
-  renderExpenses();
-  renderSummary();
+function renderAll() { renderDashboard(); renderExpenses(); renderSummary(); }
+
+// ── PDF EXPORT ──
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  if(!jsPDF) { alert('PDF library not loaded. Please connect to internet once.'); return; }
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  const exps = getExp();
+  const total = exps.reduce((s,e)=>s+e.amt,0);
+  const budget = getBudget();
+  const monthName = MONTHS[cMonth]+' '+cYear;
+
+  // Header
+  doc.setFillColor(15,17,23);
+  doc.rect(0,0,210,40,'F');
+  doc.setTextColor(240,240,244);
+  doc.setFontSize(22);
+  doc.setFont('helvetica','bold');
+  doc.text('Kharcha.', 15, 18);
+  doc.setFontSize(11);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(123,127,158);
+  doc.text('Monthly Expense Report — '+monthName, 15, 27);
+  doc.setTextColor(167,139,250);
+  doc.text('Generated: '+new Date().toLocaleDateString('en-PK',{day:'numeric',month:'long',year:'numeric'}), 15, 34);
+
+  // Summary boxes
+  doc.setFillColor(26,29,39);
+  doc.roundedRect(10,46,58,22,3,3,'F');
+  doc.roundedRect(76,46,58,22,3,3,'F');
+  doc.roundedRect(142,46,58,22,3,3,'F');
+
+  doc.setFontSize(8); doc.setTextColor(123,127,158); doc.setFont('helvetica','normal');
+  doc.text('TOTAL SPENT', 14, 53);
+  doc.text('BUDGET', 80, 53);
+  doc.text('REMAINING', 146, 53);
+
+  doc.setFontSize(13); doc.setFont('helvetica','bold');
+  doc.setTextColor(240,240,244);
+  doc.text('Rs '+fmt(total), 14, 63);
+  doc.text(budget>0?'Rs '+fmt(budget):'—', 80, 63);
+  doc.setTextColor(budget>0&&total>budget?230:74, budget>0&&total>budget?80:222, budget>0&&total>budget?100:128);
+  doc.text(budget>0?'Rs '+fmt(Math.max(0,budget-total)):'—', 146, 63);
+
+  // Category breakdown
+  doc.setFillColor(26,29,39);
+  doc.rect(10,76,190,8,'F');
+  doc.setFontSize(8); doc.setFont('helvetica','bold'); doc.setTextColor(123,127,158);
+  doc.text('CATEGORY', 14, 82);
+  doc.text('AMOUNT', 120, 82);
+  doc.text('% OF TOTAL', 160, 82);
+
+  const catTotals = {};
+  exps.forEach(e => { catTotals[e.cat]=(catTotals[e.cat]||0)+e.amt; });
+  const sorted = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+  let y = 92;
+  sorted.forEach(([cat,amt],i) => {
+    if(i%2===0){ doc.setFillColor(22,25,36); doc.rect(10,y-5,190,9,'F'); }
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(240,240,244);
+    doc.text((CATS[cat]?.icon||'')+'  '+cat, 14, y);
+    doc.text('Rs '+fmt(amt), 120, y);
+    doc.text((total>0?Math.round(amt/total*100):0)+'%', 163, y);
+    y += 10;
+  });
+
+  // Expense list
+  y += 6;
+  doc.setFillColor(15,17,23);
+  doc.rect(10,y-5,190,9,'F');
+  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(167,139,250);
+  doc.text('ALL EXPENSES ('+exps.length+')', 14, y);
+  y += 8;
+
+  doc.setFillColor(26,29,39);
+  doc.rect(10,y-5,190,8,'F');
+  doc.setFontSize(7.5); doc.setFont('helvetica','bold'); doc.setTextColor(123,127,158);
+  doc.text('DATE', 14, y);
+  doc.text('DESCRIPTION', 40, y);
+  doc.text('CATEGORY', 110, y);
+  doc.text('AMOUNT', 165, y);
+  y += 8;
+
+  exps.forEach((e,i) => {
+    if(y > 270) { doc.addPage(); y = 20; }
+    if(i%2===0){ doc.setFillColor(22,25,36); doc.rect(10,y-5,190,8,'F'); }
+    const dStr = new Date(e.date+'T00:00:00').toLocaleDateString('en-PK',{day:'numeric',month:'short'});
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(240,240,244);
+    doc.text(dStr, 14, y);
+    doc.text(e.desc.length>30?e.desc.substring(0,28)+'...':e.desc, 40, y);
+    doc.text(e.cat, 110, y);
+    doc.setTextColor(167,139,250);
+    doc.text('Rs '+fmt(e.amt), 165, y);
+    y += 8;
+  });
+
+  // Footer
+  doc.setFillColor(15,17,23);
+  doc.rect(0,285,210,12,'F');
+  doc.setFontSize(8); doc.setTextColor(123,127,158); doc.setFont('helvetica','normal');
+  doc.text('Kharcha — Monthly Expense Tracker', 15, 292);
+  doc.text('Page 1', 185, 292);
+
+  doc.save('Kharcha-'+monthName.replace(' ','-')+'.pdf');
+  showToast('📄 PDF downloaded!');
 }
 
+// ── TOAST ──
 function showToast(msg) {
   const t = document.createElement('div');
   t.textContent = msg;
-  Object.assign(t.style, {
-    position:'fixed', bottom:'100px', left:'50%', transform:'translateX(-50%)',
-    background:'var(--accent)', color:'#fff', padding:'10px 20px',
-    borderRadius:'100px', fontSize:'13px', fontWeight:'500',
-    zIndex:'999', animation:'fadeInOut 2s ease forwards',
-    fontFamily:'var(--font)'
-  });
-  document.head.insertAdjacentHTML('beforeend','<style>@keyframes fadeInOut{0%{opacity:0;transform:translateX(-50%) translateY(8px)}20%{opacity:1;transform:translateX(-50%) translateY(0)}80%{opacity:1}100%{opacity:0}}</style>');
+  Object.assign(t.style, { position:'fixed', bottom:'100px', left:'50%', transform:'translateX(-50%)', background:'var(--accent)', color:'#fff', padding:'10px 20px', borderRadius:'100px', fontSize:'13px', fontWeight:'500', zIndex:'9999', whiteSpace:'nowrap', fontFamily:'var(--font)' });
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(), 2000);
+  t.animate([{opacity:0,transform:'translateX(-50%) translateY(8px)'},{opacity:1,transform:'translateX(-50%) translateY(0)'},{opacity:1},{opacity:0}],{duration:2200,fill:'forwards'});
+  setTimeout(()=>t.remove(), 2200);
 }
 
-// Init
+// ── INIT ──
 document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
-renderAll();
+initApp();
 </script>
 </body>
 </html>
