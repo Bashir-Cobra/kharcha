@@ -6,7 +6,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0f1117">
-<title>Kharcha — Monthly Expense Tracker</title>
+<title>ABJ Kharcha — Monthly Expense Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
@@ -198,6 +198,33 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 .btn-pdf { width: 100%; background: rgba(74,222,128,0.1); border: 0.5px solid rgba(74,222,128,0.3); border-radius: var(--radius-sm); padding: 13px; font-family: var(--font); font-size: 14px; font-weight: 600; color: var(--green); cursor: pointer; transition: all .2s; margin-bottom: 10px; }
 .btn-pdf:active { background: rgba(74,222,128,0.2); }
 
+/* ── MODAL ── */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:500; display:none; align-items:flex-end; justify-content:center; backdrop-filter:blur(4px); }
+.modal-overlay.show { display:flex; }
+.modal { background:var(--surface); border-radius:var(--radius) var(--radius) 0 0; border:0.5px solid var(--border2); width:100%; max-width:480px; padding:20px; max-height:85vh; overflow-y:auto; animation:slideUp .3s cubic-bezier(.4,0,.2,1); }
+@keyframes slideUp { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.modal-handle { width:40px; height:4px; background:var(--border2); border-radius:2px; margin:0 auto 18px; }
+.modal-title { font-size:17px; font-weight:700; margin-bottom:4px; }
+.modal-subtitle { font-size:12px; color:var(--muted); margin-bottom:18px; }
+.modal-input-row { display:flex; gap:8px; margin-bottom:14px; }
+.modal-input-row input { flex:1; background:var(--surface2); border:0.5px solid var(--border2); border-radius:var(--radius-sm); padding:11px 12px; font-family:var(--font); font-size:13px; color:var(--text); outline:none; }
+.modal-input-row input:focus { border-color:var(--accent); }
+.modal-input-row input::placeholder { color:var(--muted); }
+.btn-modal-add { background:var(--accent); border:none; border-radius:var(--radius-sm); padding:11px 16px; font-family:var(--font); font-size:13px; font-weight:600; color:#fff; cursor:pointer; white-space:nowrap; }
+.btn-modal-add:active { opacity:.85; }
+.cat-list { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.cat-list-item { display:flex; align-items:center; gap:10px; background:var(--surface2); border-radius:var(--radius-sm); padding:10px 12px; border:0.5px solid var(--border); }
+.cat-list-icon { font-size:18px; width:32px; text-align:center; flex-shrink:0; }
+.cat-list-name { flex:1; font-size:13px; font-weight:500; }
+.cat-list-badge { font-size:10px; color:var(--muted); background:var(--surface); padding:2px 8px; border-radius:20px; border:0.5px solid var(--border2); }
+.cat-list-del { background:none; border:none; color:var(--muted); cursor:pointer; font-size:14px; padding:4px; transition:color .2s; }
+.cat-list-del:hover { color:var(--red); }
+.cat-list-del.locked { color:var(--border2); cursor:not-allowed; }
+.emoji-picker { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+.emoji-opt { font-size:20px; cursor:pointer; padding:6px; border-radius:8px; border:0.5px solid var(--border); background:var(--surface2); transition:all .15s; }
+.emoji-opt:active,.emoji-opt.selected { background:var(--accent); border-color:var(--accent); }
+.btn-close-modal { width:100%; background:var(--surface2); border:0.5px solid var(--border2); border-radius:var(--radius-sm); padding:12px; font-family:var(--font); font-size:13px; color:var(--muted); cursor:pointer; }
+
 ::-webkit-scrollbar { width: 0; }
 </style>
 </head>
@@ -205,7 +232,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 
 <!-- ── PIN LOCK SCREEN ── -->
 <div id="pin-screen">
-  <div class="pin-logo">Kharcha<span>.</span></div>
+  <div class="pin-logo">ABJ Kharcha<span>.</span></div>
   <div class="pin-subtitle" id="pin-subtitle">Enter your PIN</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot" id="d0"></div>
@@ -233,7 +260,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 
 <!-- ── SET PIN SCREEN ── -->
 <div id="set-pin-screen">
-  <div class="pin-logo">Kharcha<span>.</span></div>
+  <div class="pin-logo">ABJ Kharcha<span>.</span></div>
   <div class="pin-subtitle" id="setpin-subtitle">Create a 4-digit PIN</div>
   <div class="pin-dots" id="setpin-dots">
     <div class="pin-dot" id="sd0"></div>
@@ -263,7 +290,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 
 <div class="app-header">
   <div class="header-top">
-    <div class="app-title">Kharcha<span>.</span></div>
+    <div class="app-title">ABJ Kharcha<span>.</span></div>
     <div class="month-switcher">
       <button class="month-btn" onclick="changeMonth(-1)">&#8249;</button>
       <span class="month-name" id="month-label">—</span>
@@ -313,17 +340,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
       </div>
       <div class="field">
         <label>Category</label>
-        <select id="inp-cat">
-          <option value="House Rent">🏠 House Rent</option>
-          <option value="Electric Bill">⚡ Electric Bill</option>
-          <option value="Gas Bill">🔥 Gas Bill</option>
-          <option value="Daily Home">🛒 Daily Home Expense</option>
-          <option value="Monthly Home">📦 Monthly Home Expense</option>
-          <option value="Food">🍽️ Food</option>
-          <option value="Gym">💪 Gym</option>
-          <option value="Others">📋 Others</option>
-        </select>
+        <select id="inp-cat"></select>
       </div>
+      <button type="button" style="background:none;border:0.5px dashed var(--border2);border-radius:var(--radius-sm);padding:10px;font-family:var(--font);font-size:12px;color:var(--muted);cursor:pointer;text-align:left;" onclick="openCatModal()">⚙️ Manage Categories &nbsp;→</button>
       <button class="btn-add" onclick="addExpense()">+ Add Expense</button>
     </div>
   </div>
@@ -336,16 +355,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     <div style="font-size:13px;color:var(--muted);" id="exp-subtitle">All entries</div>
   </div>
   <div class="section">
-    <div class="cat-pills">
+    <div class="cat-pills" id="pills-container">
       <div class="pill active" onclick="filterCat('All',this)">All</div>
-      <div class="pill" onclick="filterCat('House Rent',this)">🏠 Rent</div>
-      <div class="pill" onclick="filterCat('Electric Bill',this)">⚡ Electric</div>
-      <div class="pill" onclick="filterCat('Gas Bill',this)">🔥 Gas</div>
-      <div class="pill" onclick="filterCat('Daily Home',this)">🛒 Daily</div>
-      <div class="pill" onclick="filterCat('Monthly Home',this)">📦 Monthly</div>
-      <div class="pill" onclick="filterCat('Food',this)">🍽️ Food</div>
-      <div class="pill" onclick="filterCat('Gym',this)">💪 Gym</div>
-      <div class="pill" onclick="filterCat('Others',this)">📋 Others</div>
     </div>
   </div>
   <div class="section">
@@ -373,6 +384,14 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   </div>
   <div class="section">
     <div class="settings-group">
+      <div class="settings-item" onclick="openCatModal()">
+        <div class="settings-icon">🗂️</div>
+        <div class="settings-info">
+          <div class="settings-title">Manage Categories</div>
+          <div class="settings-desc">Add or remove expense categories</div>
+        </div>
+        <span class="settings-arrow">›</span>
+      </div>
       <div class="settings-item" onclick="openChangePIN()">
         <div class="settings-icon">🔐</div>
         <div class="settings-info">
@@ -411,24 +430,141 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
   <button class="nav-btn" id="nav-settings" onclick="goPage('settings')"><span class="nav-icon">⚙️</span><span class="nav-label">Settings</span></button>
 </div>
 
+<!-- CATEGORY MODAL -->
+<div class="modal-overlay" id="cat-modal" onclick="closeCatModal(event)">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Manage Categories</div>
+    <div class="modal-subtitle">Add your own categories or remove unused ones</div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Pick an emoji</div>
+    <div class="emoji-picker" id="emoji-picker">
+      🏠 ⚡ 🔥 🛒 📦 🍽️ 💪 📋 🚗 ✈️ 🎓 💊 👗 💈 🐾 🎮 📱 💻 🏦 💰 🎁 🧴 🧹 🛠️ 📚 🎵 🍕 ☕ 🏋️ 🧒
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Add new category</div>
+    <div class="modal-input-row">
+      <input type="text" id="new-cat-name" placeholder="Category name..." maxlength="20">
+      <button class="btn-modal-add" onclick="addCustomCategory()">+ Add</button>
+    </div>
+
+    <div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">All categories</div>
+    <div class="cat-list" id="cat-list"></div>
+    <button class="btn-close-modal" onclick="document.getElementById('cat-modal').classList.remove('show')">Close</button>
+  </div>
+</div>
+
 </div><!-- end main-app -->
 
 <script>
 // ── CONSTANTS ──
-const CATS = {
-  'House Rent':    { icon:'🏠', color:'#6c63ff', bg:'rgba(108,99,255,0.15)' },
-  'Electric Bill': { icon:'⚡', color:'#fbbf24', bg:'rgba(251,191,36,0.15)' },
-  'Gas Bill':      { icon:'🔥', color:'#f97316', bg:'rgba(249,115,22,0.15)' },
-  'Daily Home':    { icon:'🛒', color:'#38bdf8', bg:'rgba(56,189,248,0.15)' },
-  'Monthly Home':  { icon:'📦', color:'#34d399', bg:'rgba(52,211,153,0.15)' },
-  'Food':          { icon:'🍽️', color:'#4ade80', bg:'rgba(74,222,128,0.15)' },
-  'Gym':           { icon:'💪', color:'#f472b6', bg:'rgba(244,114,182,0.15)' },
-  'Others':        { icon:'📋', color:'#94a3b8', bg:'rgba(148,163,184,0.15)' },
-};
+const DEFAULT_CATS = [
+  { name:'House Rent',    icon:'🏠', color:'#6c63ff', bg:'rgba(108,99,255,0.15)' },
+  { name:'Electric Bill', icon:'⚡', color:'#fbbf24', bg:'rgba(251,191,36,0.15)' },
+  { name:'Gas Bill',      icon:'🔥', color:'#f97316', bg:'rgba(249,115,22,0.15)' },
+  { name:'Daily Home',    icon:'🛒', color:'#38bdf8', bg:'rgba(56,189,248,0.15)' },
+  { name:'Monthly Home',  icon:'📦', color:'#34d399', bg:'rgba(52,211,153,0.15)' },
+  { name:'Food',          icon:'🍽️', color:'#4ade80', bg:'rgba(74,222,128,0.15)' },
+  { name:'Gym',           icon:'💪', color:'#f472b6', bg:'rgba(244,114,182,0.15)' },
+  { name:'Others',        icon:'📋', color:'#94a3b8', bg:'rgba(148,163,184,0.15)' },
+];
+const CAT_COLORS = ['#6c63ff','#fbbf24','#f97316','#38bdf8','#34d399','#4ade80','#f472b6','#94a3b8','#e879f9','#fb7185','#a78bfa','#67e8f9','#86efac','#fde68a'];
+
+function getCategories() {
+  try { const d = localStorage.getItem('abj_cats'); return d ? JSON.parse(d) : [...DEFAULT_CATS]; } catch { return [...DEFAULT_CATS]; }
+}
+function saveCategories(cats) { localStorage.setItem('abj_cats', JSON.stringify(cats)); }
+function getCATSMap() {
+  const map = {};
+  getCategories().forEach(c => { map[c.name] = c; });
+  return map;
+}
+
+let CATS = getCATSMap();
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 let cYear = new Date().getFullYear(), cMonth = new Date().getMonth();
 let activeCat = 'All', currentPage = 'dashboard';
+let selectedEmoji = '📋';
+
+// ── CATEGORY MODAL ──
+function openCatModal() {
+  renderCatModal();
+  document.getElementById('cat-modal').classList.add('show');
+}
+function closeCatModal(e) {
+  if(e.target === document.getElementById('cat-modal')) document.getElementById('cat-modal').classList.remove('show');
+}
+
+function renderCatModal() {
+  CATS = getCATSMap();
+  // Emoji picker
+  const emojis = ['🏠','⚡','🔥','🛒','📦','🍽️','💪','📋','🚗','✈️','🎓','💊','👗','💈','🐾','🎮','📱','💻','🏦','💰','🎁','🧴','🧹','🛠️','📚','🎵','🍕','☕','🏋️','🧒'];
+  document.getElementById('emoji-picker').innerHTML = emojis.map(e =>
+    `<div class="emoji-opt${e===selectedEmoji?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`
+  ).join('');
+
+  // Category list
+  const cats = getCategories();
+  document.getElementById('cat-list').innerHTML = cats.map((c,i) =>
+    `<div class="cat-list-item">
+      <div class="cat-list-icon">${c.icon}</div>
+      <div class="cat-list-name">${c.name}</div>
+      ${i < DEFAULT_CATS.length
+        ? `<span class="cat-list-badge">default</span>`
+        : `<button class="cat-list-del" onclick="deleteCategory('${c.name}')">✕</button>`}
+    </div>`
+  ).join('');
+}
+
+function selectEmoji(e) {
+  selectedEmoji = e;
+  document.querySelectorAll('.emoji-opt').forEach(el => el.classList.remove('selected'));
+  event.target.classList.add('selected');
+}
+
+function addCustomCategory() {
+  const nameInput = document.getElementById('new-cat-name');
+  const name = nameInput.value.trim();
+  if(!name) { alert('Please enter a category name.'); return; }
+  const cats = getCategories();
+  if(cats.find(c => c.name.toLowerCase() === name.toLowerCase())) { alert('Category already exists!'); return; }
+  const color = CAT_COLORS[cats.length % CAT_COLORS.length];
+  const rgb = parseInt(color.slice(1),16);
+  const r=(rgb>>16)&255, g=(rgb>>8)&255, b=rgb&255;
+  cats.push({ name, icon: selectedEmoji, color, bg:`rgba(${r},${g},${b},0.15)` });
+  saveCategories(cats);
+  CATS = getCATSMap();
+  nameInput.value = '';
+  renderCatModal();
+  rebuildCategoryUI();
+  showToast('✅ Category "'+name+'" added!');
+}
+
+function deleteCategory(name) {
+  if(!confirm('Delete category "'+name+'"? Expenses in this category will show as "Others".')) return;
+  const cats = getCategories().filter(c => c.name !== name);
+  saveCategories(cats);
+  CATS = getCATSMap();
+  renderCatModal();
+  rebuildCategoryUI();
+  showToast('🗑️ Category removed');
+}
+
+function rebuildCategoryUI() {
+  // Rebuild category select in Add form
+  const sel = document.getElementById('inp-cat');
+  const cats = getCategories();
+  sel.innerHTML = cats.map(c => `<option value="${c.name}">${c.icon} ${c.name}</option>`).join('');
+
+  // Rebuild filter pills
+  const pillsContainer = document.getElementById('pills-container');
+  if(pillsContainer) {
+    pillsContainer.innerHTML = `<div class="pill active" onclick="filterCat('All',this)">All</div>` +
+      cats.map(c => `<div class="pill" onclick="filterCat('${c.name}',this)">${c.icon} ${c.name}</div>`).join('');
+  }
+  renderAll();
+}
 
 // ── STORAGE ──
 function sk() { return 'kx_'+cYear+'_'+cMonth; }
@@ -674,7 +810,9 @@ function renderSummary() {
   const total = exps.reduce((s,e)=>s+e.amt,0);
   const catTotals = {};
   exps.forEach(e => { catTotals[e.cat]=(catTotals[e.cat]||0)+e.amt; });
-  const sorted = Object.entries(CATS).map(([name,c])=>({name,c,amt:catTotals[name]||0})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
+  CATS = getCATSMap();
+  const allCats = getCategories();
+  const sorted = allCats.map(c=>({name:c.name,c,amt:catTotals[c.name]||0})).filter(x=>x.amt>0).sort((a,b)=>b.amt-a.amt);
   const sg = document.getElementById('summary-grid');
   if(!sorted.length) { sg.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📈</div>No data yet</div>'; return; }
   sg.innerHTML = sorted.map(({name,c,amt}) => {
@@ -701,7 +839,7 @@ function exportPDF() {
   doc.setTextColor(240,240,244);
   doc.setFontSize(22);
   doc.setFont('helvetica','bold');
-  doc.text('Kharcha.', 15, 18);
+  doc.text('ABJ Kharcha.', 15, 18);
   doc.setFontSize(11);
   doc.setFont('helvetica','normal');
   doc.setTextColor(123,127,158);
@@ -782,10 +920,10 @@ function exportPDF() {
   doc.setFillColor(15,17,23);
   doc.rect(0,285,210,12,'F');
   doc.setFontSize(8); doc.setTextColor(123,127,158); doc.setFont('helvetica','normal');
-  doc.text('Kharcha — Monthly Expense Tracker', 15, 292);
+  doc.text('ABJ Kharcha — Monthly Expense Tracker', 15, 292);
   doc.text('Page 1', 185, 292);
 
-  doc.save('Kharcha-'+monthName.replace(' ','-')+'.pdf');
+  doc.save('ABJ-Kharcha-'+monthName.replace(' ','-')+'.pdf');
   showToast('📄 PDF downloaded!');
 }
 
@@ -801,6 +939,7 @@ function showToast(msg) {
 
 // ── INIT ──
 document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+rebuildCategoryUI();
 initApp();
 </script>
 </body>
